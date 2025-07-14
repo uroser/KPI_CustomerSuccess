@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Customer Success v22</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.datatables.net/2.0.7/js/dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/3.0.2/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/3.0.2/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.datatables.net/2.0.7/css/dataTables.dataTables.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.dataTables.min.css">
+    
+    <link rel="stylesheet" href="style.css">
+    <script src="main.js" defer></script>
+</head>
+<body class="text-text-primary">
+
+<div id="loader-overlay" class="loader-overlay hidden">
+    <div class="loader"></div>
+</div>
+
+<div class="flex h-screen">
+    <aside class="w-80 bg-card-bg shadow-lg p-6 flex-shrink-0 flex flex-col">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-2xl font-bold text-primary">Dashboard</h2>
+            <div class="theme-switch-wrapper">
+                <label class="theme-switch" for="theme-checkbox">
+                    <input type="checkbox" id="theme-checkbox" />
+                    <div class="slider round">
+                        <span class="sun-icon">☀️</span>
+                        <span class="moon-icon">🌙</span>
+                    </div>
+                </label>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label for="file-upload" class="block text-sm font-medium filter-title mb-2">Archivo CSV</label>
+            <input id="file-upload" type="file" accept=".csv"
+                   class="block w-full text-sm text-gray-500
+                          file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
+                          file:text-sm file:font-semibold file:bg-primary file:text-white
+                          hover:file:bg-primary-dark"/>
+            <a href="https://cardinalecm.atlassian.net/issues/?filter=10866" target="_blank"
+               class="text-sm text-primary hover:underline mt-2 block">Obtener CSV desde Jira</a>
+            <a href="https://www.magichow.co/embed/c91449ac-635b-4b87-927c-55dcd7315202?showTitle=true"
+               target="_blank" rel="noopener noreferrer"
+               class="text-sm text-primary hover:underline mt-1 block">📄 Ayuda con la exportación</a>
+        </div>
+
+        <button id="clear-filters-btn" class="clear-filters-button">
+             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-trash" viewBox="0 0 16 16">
+                <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+            </svg>
+            Limpiar Filtros
+        </button>
+
+        <div class="overflow-y-auto mt-4">
+            <details id="filters-details" open>
+                <summary class="text-xl font-bold text-primary mb-2">Filtros 📊</summary>
+                <div id="filters-container" class="space-y-4 mt-2"></div>
+            </details>
+        </div>
+    </aside>
+
+    <main class="flex-1 p-6 overflow-y-auto bg-body-bg">
+        <header class="mb-6">
+            <h1 class="text-4xl font-extrabold text-text-primary">Dashboard de Customer Success</h1>
+        </header>
+
+        <div id="dashboard-body" class="hidden">
+            <div class="grid grid-cols-1 md:grid-cols-6 gap-6 mb-6">
+                <div id="kpi-total-card" class="chart-card text-center">
+                    <h3 class="font-bold text-lg text-text-secondary">Implementaciones Totales</h3>
+                    <p id="kpi-total" class="text-4xl font-extrabold text-blue-500 mt-2">0</p>
+                </div>
+                <div id="kpi-closed-card" class="chart-card text-center">
+                    <h3 class="font-bold text-lg text-text-secondary">Implementaciones Cerradas</h3>
+                    <p id="kpi-closed" class="text-4xl font-extrabold text-slate-500 mt-2">0</p>
+                </div>
+                <div id="kpi-open-card" class="chart-card text-center">
+                    <h3 class="font-bold text-lg text-text-secondary">Implementaciones Abiertas</h3>
+                    <p id="kpi-open" class="text-4xl font-extrabold text-green-500 mt-2">0</p>
+                </div>
+                <div id="kpi-unassigned-card" class="chart-card text-center">
+                    <h3 class="font-bold text-lg text-text-secondary">Sin Asignar</h3>
+                    <p id="kpi-unassigned" class="text-4xl font-extrabold text-amber-500 mt-2">0</p>
+                </div>
+                <div class="chart-card md:col-span-2">
+                    <h3 class="font-bold text-lg mb-2 text-text-secondary">Resumen Inteligente</h3>
+                    <p id="narrative-analysis" class="text-text-secondary text-sm leading-relaxed"></p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="chart-card fixed-h"><canvas id="priorityChart" class="chart-canvas"></canvas></div>
+                <div class="chart-card fixed-h"><canvas id="statusChart" class="chart-canvas"></canvas></div>
+                <div class="chart-card fixed-h"><canvas id="comercialChart" class="chart-canvas"></canvas></div>
+                <div class="chart-card fixed-h lg:col-span-3"><canvas id="assigneeChart" class="chart-canvas"></canvas></div>
+                <div class="chart-card lg:col-span-3">
+                    <h3 class="font-bold text-lg text-center mb-2 text-text-secondary">Línea de Tiempo de Implementación</h3>
+                    <div class="relative overflow-y-auto border border-border-color rounded-lg" id="ganttWrapper">
+                        <canvas id="ganttChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card fixed-h lg:col-span-3"><canvas id="monthlyStackedChart" class="chart-canvas"></canvas></div>
+                <div class="chart-card lg:col-span-3">
+                    <h3 class="font-bold text-lg mb-2 text-text-secondary">Tiempo Promedio por Módulo (días)</h3>
+                    <table id="avgModuleTable" class="display w-full"></table>
+                    <p id="avgModuleNote" class="text-sm text-text-tertiary mt-2"></p>
+                </div>
+            </div>
+        </div>
+
+        <div id="welcome-message" class="text-center mt-20">
+            <h2 class="text-2xl font-semibold text-gray-500">Por favor, cargá un CSV para comenzar.</h2>
+        </div>
+    </main>
+</div>
+
+<div id="details-modal" class="modal modal-inactive">
+    <div class="modal-content">
+        <div class="p-4 border-b border-border-color flex justify-between items-center">
+            <h3 id="modal-title" class="text-xl font-bold text-text-primary">Detalle de Tickets</h3>
+            <button id="modal-close-btn" class="text-3xl leading-none font-bold text-gray-500 hover:text-gray-800">&times;</button>
+        </div>
+        <div class="p-4 overflow-auto">
+            <table id="details-table" class="display" style="width:100%"></table>
+        </div>
+    </div>
+</div>
+</body>
+</html>
