@@ -319,14 +319,15 @@ function renderMonthlyStackedChart() {
 
 /* ---------- GANTT CHART ---------- */
 function setupGantt() {
-    gantt.plugins({ marker: true, fullscreen: true, tooltip: true });
+    // ----- SOLUCIÓN APLICADA: SE ELIMINA EL PLUGIN DE TOOLTIPS -----
+    gantt.plugins({ marker: true, fullscreen: true }); // 'tooltip: true' ha sido eliminado.
+    
     gantt.i18n.setLocale("es");
     gantt.config.date_format = "%Y-%m-%d";
     gantt.config.row_height = 40;
     gantt.config.open_tree_initially = false;
     gantt.config.scales = [{unit: "year", step: 1, format: "%Y"}, {unit: "month", step: 1, format: "%M '%y"}];
     
-    // MODIFICADO: Template para la columna de la parrilla con icono de completado
     gantt.config.columns = [{ 
         name: "text", 
         label: "Cliente / Módulo", 
@@ -337,7 +338,6 @@ function setupGantt() {
                 const hasInProgress = gantt.getChildren(task.id).some(id => state.filteredData.find(r => r['Issue key'] === id)?.Status !== CLOSED_STATUS);
                 return hasInProgress ? `<div class="gantt_in_progress_project">${task.text}</div>` : task.text;
             }
-            // Para las tareas (módulos)
             const originalTask = state.filteredData.find(r => r['Issue key'] === task.id);
             const isCompleted = originalTask && originalTask.Status === CLOSED_STATUS;
             if (isCompleted) {
@@ -348,55 +348,32 @@ function setupGantt() {
         }
     }];
     
-    // Plantilla de tooltip para mostrar toda la info al pasar el ratón.
-    gantt.templates.tooltip_text = function(start, end, task) {
-        if (task.type === 'project') {
-            // Calcular el rango de fechas del proyecto a partir de sus tareas hijas
-            let minDate = Infinity;
-            let maxDate = -Infinity;
-            const children = gantt.getChildren(task.id);
-            if (children.length > 0) {
-                children.forEach(childId => {
-                    const childTask = gantt.getTask(childId);
-                    if (childTask.start_date) minDate = Math.min(minDate, childTask.start_date.getTime());
-                    if (childTask.end_date) maxDate = Math.max(maxDate, childTask.end_date.getTime());
-                });
-            }
+    // ----- SE ELIMINA EL TEMPLATE DEL TOOLTIP PORQUE YA NO EXISTE -----
+    // gantt.templates.tooltip_text = function(...) { ... };
 
-            const dateToStr = gantt.date.date_to_str("%d/%m/%Y");
-            const projectStartDate = minDate === Infinity ? 'N/A' : dateToStr(new Date(minDate));
-            const projectEndDate = maxDate === -Infinity ? 'N/A' : dateToStr(new Date(maxDate));
-
-            return `<b>Cliente:</b> ${task.text}<br/>` +
-                   `<b>Inicio (módulos):</b> ${projectStartDate}<br/>` +
-                   `<b>Fin (módulos):</b> ${projectEndDate}`;
-        }
-
-        const original = state.filteredData.find(r => r['Issue key'] === task.id);
-        if (!original) return task.text;
-
-        const dateToStr = gantt.date.date_to_str("%d/%m/%Y");
-        const effectiveEndDate = original.Status === CLOSED_STATUS && original.GoLiveDate ? original.GoLiveDate : (original.DueDate || original.GoLiveDate);
-
-        return `
-            <b>Módulo:</b> ${task.text}<br/>
-            <b>Estado:</b> ${original.Status}<br/>
-            <b>Inicio:</b> ${dateToStr(task.start_date)}<br/>
-            <b>Fin:</b> ${dateToStr(effectiveEndDate)}
-        `;
-    };
-
-    // Texto DENTRO de la barra: Solo el nombre del módulo.
     gantt.templates.task_text = (start, end, task) => task.text;
 
-    // ELIMINADO: Custom renderer para proyectos. Ahora se maneja con CSS y la estructura por defecto.
-    
-    gantt.attachEvent("onTaskClick", (id) => {
-        // Permitir que Gantt maneje el click para expandir/contraer proyectos
-        return true; 
+    gantt.attachEvent("onTaskClick", (id, e) => {
+        const task = gantt.getTask(id);
+
+        // Si es un proyecto (cliente), permitir la acción por defecto (expandir/contraer).
+        if (task.type === gantt.config.types.project) {
+            return true;
+        }
+
+        // Si es una tarea (módulo), buscar sus datos y mostrar el modal directamente.
+        const taskData = state.filteredData.find(r => r['Issue key'] === id);
+        if (taskData) {
+            showDetailsModal(null, [taskData], `Detalles del Ticket: ${taskData['Issue key']}`);
+        }
+
+        // Devolver true para asegurar que el ciclo de eventos del Gantt termine limpiamente.
+        return true;
     });
+
     gantt.init("dhtmlx-gantt-container");
 }
+
 
 function renderGanttChart() {
     const ganttData = [];
@@ -407,7 +384,6 @@ function renderGanttChart() {
       .forEach(r => {
         if (!companies[r.CompanyName]) {
             const id = `P_${r.CompanyName.replace(/[^a-zA-Z0-9]/g, '')}`;
-            // Asegurarse de que el tipo sea 'project' para que DHTMLX Gantt lo reconozca y permita expandir/contraer
             companies[r.CompanyName] = { id, text: r.CompanyName, type: gantt.config.types.project, open: false };
             ganttData.push(companies[r.CompanyName]);
         }
@@ -420,7 +396,7 @@ function renderGanttChart() {
         ganttData.push({
             id: r['Issue key'], text: category, start_date: r.StartDate.toISOString().slice(0, 10),
             end_date: effectiveEndDate.toISOString().slice(0, 10), parent: companies[r.CompanyName].id,
-            progress: isCompleted ? 1 : 0, color: isCompleted ? 'var(--color-success)' : color, // Usar variable CSS para el verde de completado
+            progress: isCompleted ? 1 : 0, color: isCompleted ? 'var(--color-success)' : color,
             css: isCompleted ? 'gantt_completed_task' : 'gantt_in_progress_task'
         });
     });
