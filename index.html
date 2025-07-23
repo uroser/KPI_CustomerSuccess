@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard de Customer Success v22</title>
+    <title>Customer Success Dashboard | Cardinal Systems</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
@@ -18,6 +18,9 @@
     <link rel="stylesheet" href="https://cdn.datatables.net/2.0.7/css/dataTables.dataTables.min.css">
     <link rel="stylesheet" href="https://cdn.datatables.net/buttons/3.0.2/css/buttons.dataTables.min.css">
     
+    <script src="https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.js"></script>
+    <link href="https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.css" rel="stylesheet">
+
     <link rel="stylesheet" href="style.css">
     <script src="main.js" defer></script>
 </head>
@@ -28,9 +31,12 @@
 </div>
 
 <div class="flex h-screen">
-    <aside class="w-80 bg-card-bg shadow-lg p-6 flex-shrink-0 flex flex-col">
+    <aside class="w-80 bg-sidebar-bg shadow-lg p-6 flex-shrink-0 flex flex-col">
         <div class="flex justify-between items-center mb-6">
-            <h2 class="text-2xl font-bold text-primary">Dashboard</h2>
+             <div class="flex items-center gap-3">
+                <img src="https://cardinal-systems.com/wp-content/uploads/2023/08/logo-cs-redondo.svg" alt="Logo Cardinal Systems" class="h-10 w-10">
+                <h2 class="text-2xl font-bold text-white">Dashboard</h2>
+            </div>
             <div class="theme-switch-wrapper">
                 <label class="theme-switch" for="theme-checkbox">
                     <input type="checkbox" id="theme-checkbox" />
@@ -43,17 +49,18 @@
         </div>
 
         <div class="mb-4">
-            <label for="file-upload" class="block text-sm font-medium filter-title mb-2">Archivo CSV</label>
-            <input id="file-upload" type="file" accept=".csv"
-                   class="block w-full text-sm text-gray-500
-                          file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0
-                          file:text-sm file:font-semibold file:bg-primary file:text-white
-                          hover:file:bg-primary-dark"/>
+            <label class="block text-sm font-medium filter-title mb-2">Archivo CSV</label>
+            <div class="custom-file-input">
+                <label for="file-upload" class="file-upload-button">Seleccionar</label>
+                <span id="file-upload-filename" class="file-upload-text">Ningún archivo seleccionado</span>
+            </div>
+            <input id="file-upload" type="file" accept=".csv" class="hidden"/>
+            
             <a href="https://cardinalecm.atlassian.net/issues/?filter=10866" target="_blank"
-               class="text-sm text-primary hover:underline mt-2 block">Obtener CSV desde Jira</a>
+               class="text-sm text-primary-link hover:underline mt-2 block">📁Obtener CSV de Jira</a>
             <a href="https://www.magichow.co/embed/c91449ac-635b-4b87-927c-55dcd7315202?showTitle=true"
                target="_blank" rel="noopener noreferrer"
-               class="text-sm text-primary hover:underline mt-1 block">📄 Ayuda con la exportación</a>
+               class="text-sm text-primary-link hover:underline mt-1 block">❓Ayuda</a>
         </div>
 
         <button id="clear-filters-btn" class="clear-filters-button">
@@ -66,7 +73,7 @@
 
         <div class="overflow-y-auto mt-4">
             <details id="filters-details" open>
-                <summary class="text-xl font-bold text-primary mb-2">Filtros 📊</summary>
+                <summary class="text-xl font-bold text-white mb-2">Filtros 📊</summary>
                 <div id="filters-container" class="space-y-4 mt-2"></div>
             </details>
         </div>
@@ -74,24 +81,24 @@
 
     <main class="flex-1 p-6 overflow-y-auto bg-body-bg">
         <header class="mb-6">
-            <h1 class="text-4xl font-extrabold text-text-primary">Dashboard de Customer Success</h1>
+            <h1 class="text-4xl font-extrabold text-text-primary">Customer Success</h1>
         </header>
 
         <div id="dashboard-body" class="hidden">
             <div class="grid grid-cols-1 md:grid-cols-6 gap-6 mb-6">
-                <div id="kpi-total-card" class="chart-card text-center">
+                <div id="kpi-total-card" class="chart-card text-center cursor-pointer kpi-card">
                     <h3 class="font-bold text-lg text-text-secondary">Implementaciones Totales</h3>
                     <p id="kpi-total" class="text-4xl font-extrabold text-blue-500 mt-2">0</p>
                 </div>
-                <div id="kpi-closed-card" class="chart-card text-center">
+                <div id="kpi-closed-card" class="chart-card text-center cursor-pointer kpi-card">
                     <h3 class="font-bold text-lg text-text-secondary">Implementaciones Cerradas</h3>
                     <p id="kpi-closed" class="text-4xl font-extrabold text-slate-500 mt-2">0</p>
                 </div>
-                <div id="kpi-open-card" class="chart-card text-center">
+                <div id="kpi-open-card" class="chart-card text-center cursor-pointer kpi-card">
                     <h3 class="font-bold text-lg text-text-secondary">Implementaciones Abiertas</h3>
                     <p id="kpi-open" class="text-4xl font-extrabold text-green-500 mt-2">0</p>
                 </div>
-                <div id="kpi-unassigned-card" class="chart-card text-center">
+                <div id="kpi-unassigned-card" class="chart-card text-center cursor-pointer kpi-card">
                     <h3 class="font-bold text-lg text-text-secondary">Sin Asignar</h3>
                     <p id="kpi-unassigned" class="text-4xl font-extrabold text-amber-500 mt-2">0</p>
                 </div>
@@ -106,12 +113,20 @@
                 <div class="chart-card fixed-h"><canvas id="statusChart" class="chart-canvas"></canvas></div>
                 <div class="chart-card fixed-h"><canvas id="comercialChart" class="chart-canvas"></canvas></div>
                 <div class="chart-card fixed-h lg:col-span-3"><canvas id="assigneeChart" class="chart-canvas"></canvas></div>
+                
                 <div class="chart-card lg:col-span-3">
-                    <h3 class="font-bold text-lg text-center mb-2 text-text-secondary">Línea de Tiempo de Implementación</h3>
-                    <div class="relative overflow-y-auto border border-border-color rounded-lg" id="ganttWrapper">
-                        <canvas id="ganttChart"></canvas>
+                    <div class="flex justify-between items-center mb-2 flex-wrap gap-2">
+                        <h3 class="font-bold text-lg text-text-secondary">Línea de Tiempo de Implementación por Cliente</h3>
+                        <div class="flex gap-2">
+                            <button id="gantt-expand-all-btn" class="gantt-control-btn">Expandir Todo</button>
+                            <button id="gantt-collapse-all-btn" class="gantt-control-btn">Contraer Todo</button>
+                            <button id="gantt-fullscreen-btn" class="gantt-control-btn">Pantalla Completa</button>
+                        </div>
                     </div>
+                    <div id="gantt-legend" class="gantt-legend mb-4"></div>
+                    <div id="dhtmlx-gantt-container" style='width:100%; height:75vh;'></div>
                 </div>
+
                 <div class="chart-card fixed-h lg:col-span-3"><canvas id="monthlyStackedChart" class="chart-canvas"></canvas></div>
                 <div class="chart-card lg:col-span-3">
                     <h3 class="font-bold text-lg mb-2 text-text-secondary">Tiempo Promedio por Módulo (días)</h3>
@@ -124,6 +139,20 @@
         <div id="welcome-message" class="text-center mt-20">
             <h2 class="text-2xl font-semibold text-gray-500">Por favor, cargá un CSV para comenzar.</h2>
         </div>
+        
+        <footer class="main-footer">
+            <div class="footer-content">
+                <p>
+                    <strong>CS Dashboard v1.0</strong> © <span id="footer-year"></span> | Desarrollado por <strong>Ulises Roser</strong>
+                    <a href="https://www.linkedin.com/in/ulises-roser/" target="_blank" rel="noopener noreferrer" class="linkedin-link" aria-label="Perfil de LinkedIn">
+                        <svg class="linkedin-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M20.5 2h-17A1.5 1.5 0 0 0 2 3.5v17A1.5 1.5 0 0 0 3.5 22h17a1.5 1.5 0 0 0 1.5-1.5v-17A1.5 1.5 0 0 0 20.5 2zM8 19H5v-9h3zM6.5 8.25A1.75 1.75 0 1 1 8.25 6.5 1.75 1.75 0 0 1 6.5 8.25zM19 19h-3v-4.75c0-1.4-.5-2.25-1.5-2.25S13 12.8 13 14.25V19h-3v-9h3V11c.5-.75 1.5-1.25 2.5-1.25C17.5 9.75 19 11.25 19 14.25z"></path>
+                        </svg>
+                    </a>
+                </p>
+                <p class="tech-stack">Powered by HTML, TailwindCSS, JavaScript, Chart.js & DHTMLX Gantt</p>
+            </div>
+        </footer>
     </main>
 </div>
 
@@ -131,7 +160,7 @@
     <div class="modal-content">
         <div class="p-4 border-b border-border-color flex justify-between items-center">
             <h3 id="modal-title" class="text-xl font-bold text-text-primary">Detalle de Tickets</h3>
-            <button id="modal-close-btn" class="text-3xl leading-none font-bold text-gray-500 hover:text-gray-800">&times;</button>
+            <button id="modal-close-btn" class="text-3xl leading-none font-bold text-gray-500 hover:text-gray-800">×</button>
         </div>
         <div class="p-4 overflow-auto">
             <table id="details-table" class="display" style="width:100%"></table>
